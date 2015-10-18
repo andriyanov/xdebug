@@ -32,6 +32,14 @@
 
 ZEND_EXTERN_MODULE_GLOBALS(xdebug)
 
+struct aggr_call_params {
+	FILE *file;
+	xdebug_hash *fl;
+	xdebug_hash *fn;
+	int fl_max;
+	int fn_max;
+};
+
 void xdebug_profile_aggr_call_entry_dtor(void *elem)
 {
 	xdebug_aggregate_entry *xae = (xdebug_aggregate_entry *) elem;
@@ -318,11 +326,12 @@ static int xdebug_print_aggr_entry(zval *pDest, void *argument TSRMLS_DC)
 static int xdebug_print_aggr_entry(void *pDest, void *argument TSRMLS_DC)
 #endif
 {
-	FILE *fp = (FILE *) argument;
+	struct aggr_call_params *p = argument;
+	FILE *fp = p->file;
 	xdebug_aggregate_entry *xae = (xdebug_aggregate_entry *) pDest;
 
-	fprintf(fp, "fl=%s\n", xae->filename);
-	fprintf(fp, "fn=%s\n", xae->function);
+	fprintf(fp, "fl=%s\n", get_name_hashref(xae->filename, p->fl, &p->fl_max TSRMLS_CC));
+	fprintf(fp, "fn=%s\n", get_name_hashref(xae->function, p->fn, &p->fn_max TSRMLS_CC));
 	fprintf(fp, "%d %lu\n", 0, (unsigned long) (xae->time_own * 1000000));
 	if (strcmp(xae->function, "{main}") == 0) {
 		fprintf(fp, "\nsummary: %lu\n\n", (unsigned long) (xae->time_inclusive * 1000000));
@@ -337,8 +346,8 @@ static int xdebug_print_aggr_entry(void *pDest, void *argument TSRMLS_DC)
 		while (zend_hash_get_current_data(xae->call_list, (void**)&p_xae_call) == SUCCESS) {
 			xae_call = *p_xae_call;
 #endif
-			fprintf(fp, "cfl=%s\n", xae_call->filename);
-			fprintf(fp, "cfn=%s\n", xae_call->function);
+			fprintf(fp, "cfl=%s\n", get_name_hashref(xae_call->filename, p->fl, &p->fl_max TSRMLS_CC));
+			fprintf(fp, "cfn=%s\n", get_name_hashref(xae_call->function, p->fn, &p->fn_max TSRMLS_CC));
 			fprintf(fp, "calls=%d 0 0\n", xae_call->call_count);
 			fprintf(fp, "%d %lu\n", xae_call->lineno, (unsigned long) (xae_call->time_inclusive * 1000000));
 #if PHP_VERSION_ID >= 70000
@@ -376,7 +385,17 @@ int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
 	}
 	fprintf(aggr_file, "version: 0.9.6\ncmd: Aggregate\npart: 1\n\nevents: Time\n\n");
 	fflush(aggr_file);
-	zend_hash_apply_with_argument(&XG(aggr_calls), xdebug_print_aggr_entry, aggr_file TSRMLS_CC);
+
+	struct aggr_call_params *params = malloc(sizeof(struct aggr_call_params));
+	params->file = aggr_file;
+	params->fl = xdebug_hash_alloc(128, NULL);
+	params->fn = xdebug_hash_alloc(128, NULL);
+	params->fl_max = 0;
+	params->fn_max = 0;
+	zend_hash_apply_with_argument(&XG(aggr_calls), xdebug_print_aggr_entry, params TSRMLS_CC);
+	free(params);
+	params = NULL;
+
 	fclose(aggr_file);
 	// fprintf(stderr, "wrote info for %d entries to %s\n", zend_hash_num_elements(&XG(aggr_calls)), filename);
 	return SUCCESS;
