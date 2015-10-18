@@ -796,7 +796,7 @@ PHP_MINIT_FUNCTION(xdebug)
 
 PHP_MSHUTDOWN_FUNCTION(xdebug)
 {
-	if (do_profiler_agg()) {
+	if (XG(profiler_enabled) && do_profiler_agg()) {
 		xdebug_profiler_output_aggr_data(NULL TSRMLS_CC);
 	}
 
