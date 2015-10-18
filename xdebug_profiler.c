@@ -358,7 +358,7 @@ int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
 	char *filename;
 	FILE *aggr_file;
 
-	fprintf(stderr, "in xdebug_profiler_output_aggr_data() with %d entries\n", zend_hash_num_elements(&XG(aggr_calls)));
+	// fprintf(stderr, "in xdebug_profiler_output_aggr_data() with %d entries\n", zend_hash_num_elements(&XG(aggr_calls)));
 
 	if (zend_hash_num_elements(&XG(aggr_calls)) == 0) return SUCCESS;
 
@@ -368,7 +368,7 @@ int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
 		filename = xdebug_sprintf("%s/cachegrind.out.aggregate.%ld", XG(profiler_output_dir), getpid());
 	}
 
-	fprintf(stderr, "opening %s\n", filename);
+	// fprintf(stderr, "opening %s\n", filename);
 	aggr_file = xdebug_fopen(filename, "w", NULL, NULL);
 	if (!aggr_file) {
 		return FAILURE;
@@ -377,6 +377,6 @@ int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
 	fflush(aggr_file);
 	zend_hash_apply_with_argument(&XG(aggr_calls), xdebug_print_aggr_entry, aggr_file TSRMLS_CC);
 	fclose(aggr_file);
-	fprintf(stderr, "wrote info for %d entries to %s\n", zend_hash_num_elements(&XG(aggr_calls)), filename);
+	// fprintf(stderr, "wrote info for %d entries to %s\n", zend_hash_num_elements(&XG(aggr_calls)), filename);
 	return SUCCESS;
 }
