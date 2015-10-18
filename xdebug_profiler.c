@@ -337,6 +337,7 @@ static int xdebug_print_aggr_entry(void *pDest, void *argument TSRMLS_DC)
 		while (zend_hash_get_current_data(xae->call_list, (void**)&p_xae_call) == SUCCESS) {
 			xae_call = *p_xae_call;
 #endif
+			fprintf(fp, "cfl=%s\n", xae_call->filename);
 			fprintf(fp, "cfn=%s\n", xae_call->function);
 			fprintf(fp, "calls=%d 0 0\n", xae_call->call_count);
 			fprintf(fp, "%d %lu\n", xae_call->lineno, (unsigned long) (xae_call->time_inclusive * 1000000));
