@@ -131,6 +131,17 @@ void xdebug_profiler_function_user_begin(function_stack_entry *fse TSRMLS_DC)
 	fse->profile.mark = xdebug_get_utime();
 }
 
+void xdebug_profiler_function_user_end_lite(function_stack_entry *fse, zend_op_array* op_array TSRMLS_DC)
+{
+	xdebug_profiler_function_push(fse);
+
+	fse->aggr_entry->call_count++;
+	fse->aggr_entry->time_inclusive += fse->profile.time;
+	fse->aggr_entry->time_own += fse->profile.time;
+	if (fse->prev)
+		fse->prev->aggr_entry->time_own -= fse->profile.time;
+}
+
 static char* get_filename_ref(char *name TSRMLS_DC)
 {
 	long nr;
@@ -162,6 +173,12 @@ void xdebug_profiler_function_user_end(function_stack_entry *fse, zend_op_array*
 	xdebug_llist_element *le;
 	char                 *tmp_fname, *tmp_name;
 	int                   default_lineno = 0;
+
+	if (XG(profiler_lite)) {
+		/* call lite-mode function */
+		xdebug_profiler_function_user_end_lite(fse, op_array TSRMLS_CC);
+		return;
+	}
 
 	if (fse->prev && !fse->prev->profile.call_list) {
 		fse->prev->profile.call_list = xdebug_llist_alloc(xdebug_profile_call_entry_dtor);
