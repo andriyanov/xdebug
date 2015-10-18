@@ -796,7 +796,7 @@ PHP_MINIT_FUNCTION(xdebug)
 
 PHP_MSHUTDOWN_FUNCTION(xdebug)
 {
-	if (XG(profiler_aggregate)) {
+	if (do_profiler_agg()) {
 		xdebug_profiler_output_aggr_data(NULL TSRMLS_CC);
 	}
 
@@ -2441,7 +2441,7 @@ PHP_FUNCTION(xdebug_dump_aggr_profiling_data)
 	char *prefix = NULL;
 	SIZETorINT prefix_len;
 
-	if (!XG(profiler_aggregate)) {
+	if (!do_profiler_agg()) {
 		RETURN_FALSE;
 	}
 
@@ -2458,7 +2458,7 @@ PHP_FUNCTION(xdebug_dump_aggr_profiling_data)
 
 PHP_FUNCTION(xdebug_clear_aggr_profiling_data)
 {
-	if (!XG(profiler_aggregate)) {
+	if (!do_profiler_agg()) {
 		RETURN_FALSE;
 	}
 

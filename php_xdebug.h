@@ -295,6 +295,8 @@ ZEND_END_MODULE_GLOBALS(xdebug)
 	
 #endif
 
+#define do_profiler_agg() (XG(profiler_aggregate) || XG(profiler_lite))
+
 
 /*
  * Local variables:

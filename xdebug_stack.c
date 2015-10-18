@@ -1498,7 +1498,7 @@ function_stack_entry *xdebug_add_stack_frame(zend_execute_data *zdata, zend_op_a
 		xdfree(func_name);
 	}
 
-	if (XG(profiler_aggregate)) {
+	if (do_profiler_agg()) {
 		char *func_name = xdebug_show_fname(tmp->function, 0, 0 TSRMLS_CC);
 
 		aggr_key = xdebug_sprintf("%s.%s.%d", tmp->filename, func_name, tmp->lineno);
@@ -1543,7 +1543,7 @@ function_stack_entry *xdebug_add_stack_frame(zend_execute_data *zdata, zend_op_a
 		if (XDEBUG_LLIST_TAIL(XG(stack))) {
 			function_stack_entry *prev = XDEBUG_LLIST_VALP(XDEBUG_LLIST_TAIL(XG(stack)));
 			tmp->prev = prev;
-			if (XG(profiler_aggregate)) {
+			if (do_profiler_agg()) {
 				if (prev->aggr_entry->call_list) {
 #if PHP_VERSION_ID >= 70000
 					if (!zend_hash_exists(prev->aggr_entry->call_list, aggr_key_str)) {
@@ -1567,7 +1567,7 @@ function_stack_entry *xdebug_add_stack_frame(zend_execute_data *zdata, zend_op_a
 		xdebug_llist_insert_next(XG(stack), XDEBUG_LLIST_TAIL(XG(stack)), tmp);
 	}
 
-	if (XG(profiler_aggregate)) {
+	if (do_profiler_agg()) {
 #if PHP_VERSION_ID >= 70000
 		zend_string_release(aggr_key_str);
 #endif
