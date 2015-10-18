@@ -220,6 +220,11 @@ zval *xdebug_get_zval(zend_execute_data *zdata, int node_type, const znode_op *n
 
 inline static HashTable *fetch_ht_from_zval(zval *z TSRMLS_DC)
 {
+#if PHP_VERSION_ID >= 70000
+	if (Z_TYPE_P(z) == IS_REFERENCE) {
+		z = &z->value.ref->val;
+	}
+#endif
 	switch (Z_TYPE_P(z)) {
 		case IS_ARRAY:
 			return Z_ARRVAL_P(z);
@@ -326,11 +331,14 @@ static zval **get_splobjectstorage_storage(zval *parent TSRMLS_DC)
 	HashTable *properties = Z_OBJDEBUG_P(parent, is_temp);
 
 #if PHP_VERSION_ID >= 70000
-	if ((tmp = zend_hash_str_find_ptr(properties, "\0SplObjectStorage\0storage", sizeof("*SplObjectStorage*storage"))) != NULL) {
+	zval *np_tmp;
+	if ((np_tmp = zend_hash_str_find(properties, "\0SplObjectStorage\0storage", sizeof("*SplObjectStorage*storage") - 1)) != NULL) {
+		tmp = &np_tmp;
+		return tmp;
 #else
 	if (zend_hash_find(properties, "\0SplObjectStorage\0storage", sizeof("*SplObjectStorage*storage"), (void **) &tmp) == SUCCESS) {
-#endif
 		return tmp;
+#endif
 	}
 
 	return NULL;
@@ -343,11 +351,14 @@ static zval **get_arrayiterator_storage(zval *parent TSRMLS_DC)
 	HashTable *properties = Z_OBJDEBUG_P(parent, is_temp);
 
 #if PHP_VERSION_ID >= 70000
-	if ((tmp = zend_hash_str_find_ptr(properties, "\0ArrayIterator\0storage", sizeof("*ArrayIterator*storage"))) != NULL) {
+	zval *np_tmp;
+	if ((np_tmp = zend_hash_str_find(properties, "\0ArrayIterator\0storage", sizeof("*ArrayIterator*storage") - 1)) != NULL) {
+		tmp = &np_tmp;
+		return tmp;
 #else
 	if (zend_hash_find(properties, "\0ArrayIterator\0storage", sizeof("*ArrayIterator*storage"), (void **) &tmp) == SUCCESS) {
-#endif
 		return tmp;
+#endif
 	}
 
 	return NULL;
@@ -371,7 +382,7 @@ static zval* fetch_zval_from_symbol_table(zval *parent, char* name, unsigned int
 			/* First we try a public,private,protected property */
 			element = prepare_search_key(name, &element_length, "", 0);
 #if PHP_VERSION_ID >= 70000
-			if (cce && &cce->properties_info && ((zpp = zend_hash_str_find_ptr(&cce->properties_info, element, element_length + 1)) != NULL)) {
+			if (cce && &cce->properties_info && ((zpp = zend_hash_str_find_ptr(&cce->properties_info, element, element_length)) != NULL)) {
 				retval_p = &cce->static_members_table[zpp->offset];
 #else
 			if (cce && &cce->properties_info && zend_hash_find(&cce->properties_info, element, element_length + 1, (void **) &zpp) == SUCCESS) {
@@ -391,7 +402,7 @@ static zval* fetch_zval_from_symbol_table(zval *parent, char* name, unsigned int
 					element_length = name_length - (secondStar + 1 - name);
 					element = prepare_search_key(secondStar + 1, &element_length, "", 0);
 #if PHP_VERSION_ID >= 70000
-					if (cce && &cce->properties_info && ((zpp = zend_hash_str_find_ptr(&cce->properties_info, element, element_length + 1)) != NULL)) {
+					if (cce && &cce->properties_info && ((zpp = zend_hash_str_find_ptr(&cce->properties_info, element, element_length)) != NULL)) {
 						retval_p = &cce->static_members_table[zpp->offset];
 #else
 					if (cce && &cce->properties_info && zend_hash_find(&cce->properties_info, element, element_length + 1, (void **) &zpp) == SUCCESS) {
@@ -496,7 +507,7 @@ static zval* fetch_zval_from_symbol_table(zval *parent, char* name, unsigned int
 #if PHP_VERSION_ID >= 70000
 				zval dummy;
 				tmp_val = zend_read_property(cce, parent, name, name_length, 0, &dummy);
-				if (tmp_val) {
+				if (tmp_val && tmp_val != &EG(uninitialized_zval)) {
 #else
 				tmp_val = zend_read_property(cce, parent, name, name_length, 0 TSRMLS_CC);
 				if (tmp_val && tmp_val != EG(uninitialized_zval_ptr)) {
@@ -509,7 +520,7 @@ static zval* fetch_zval_from_symbol_table(zval *parent, char* name, unsigned int
 			/* Then we try a public property */
 			element = prepare_search_key(name, &element_length, "", 0);
 #if PHP_VERSION_ID >= 70000
-			if (ht && ((retval_pp = zend_symtable_str_find_ptr(ht, element, element_length + 1)) != NULL)) {
+			if (ht && ((retval_pp = zend_symtable_str_find_ptr(ht, element, element_length)) != NULL)) {
 #else
 			if (ht && zend_symtable_find(ht, element, element_length + 1, (void **) &retval_pp) == SUCCESS) {
 #endif
@@ -522,7 +533,7 @@ static zval* fetch_zval_from_symbol_table(zval *parent, char* name, unsigned int
 			free(element);
 			element = prepare_search_key(name, &element_length, "*", 1);
 #if PHP_VERSION_ID >= 70000
-			if (ht && ((retval_pp = zend_hash_str_find_ptr(ht, element, element_length + 1)) != NULL)) {
+			if (ht && ((retval_pp = zend_hash_str_find_ptr(ht, element, element_length)) != NULL)) {
 #else
 			if (ht && zend_hash_find(ht, element, element_length + 1, (void **) &retval_pp) == SUCCESS) {
 #endif
@@ -535,7 +546,7 @@ static zval* fetch_zval_from_symbol_table(zval *parent, char* name, unsigned int
 			free(element);
 			element = prepare_search_key(name, &element_length, ccn, ccnl);
 #if PHP_VERSION_ID >= 70000
-			if (ht && ((retval_pp = zend_hash_str_find_ptr(ht, element, element_length + 1)) != NULL)) {
+			if (ht && ((retval_pp = zend_hash_str_find_ptr(ht, element, element_length)) != NULL)) {
 #else
 			if (ht && zend_hash_find(ht, element, element_length + 1, (void **) &retval_pp) == SUCCESS) {
 #endif
@@ -588,11 +599,11 @@ static zval* fetch_zval_from_symbol_table(zval *parent, char* name, unsigned int
 					/* The normal one */
 					element = prepare_search_key(secondStar + 1, &element_length, name + 1, secondStar - name - 1);
 #if PHP_VERSION_ID >= 70000
-					if (ht && ((retval_pp = zend_hash_str_find_ptr(ht, element, element_length + 1)) != NULL)) {
+					if (ht && ((retval_p = zend_hash_str_find(ht, element, element_length)) != NULL)) {
 #else
 					if (ht && zend_hash_find(ht, element, element_length + 1, (void **) &retval_pp) == SUCCESS) {
-#endif
 						retval_p = *retval_pp;
+#endif
 						goto cleanup;
 					}
 				}
@@ -607,7 +618,7 @@ cleanup:
 	return retval_p;
 }
 
-zval* xdebug_get_php_symbol(char* name, int name_length TSRMLS_DC)
+zval* xdebug_get_php_symbol(char* name TSRMLS_DC)
 {
 	int        found = -1;
 	int        state = 0;
@@ -770,7 +781,7 @@ zval* xdebug_get_php_symbol(char* name, int name_length TSRMLS_DC)
 						state = 1;
 						keyword_end = *p;
 
-						if (strncmp(keyword, "::", 2) == 0) { /* static class properties */
+						if (strncmp(keyword, "::", 2) == 0 && XG(active_fse)->function.class) { /* static class properties */
 							zend_class_entry *ce = xdebug_fetch_class(XG(active_fse)->function.class, strlen(XG(active_fse)->function.class), ZEND_FETCH_CLASS_SELF TSRMLS_CC);
 
 							current_classname = estrdup(STR_NAME_VAL(ce->name));
@@ -1876,7 +1887,7 @@ static int xdebug_object_element_export_xml_node(xdebug_object_item **item TSRML
 			char *prop_name, *prop_class_name;
 
 #if PHP_VERSION_ID >= 70000
-			modifier = xdebug_get_property_info((*item)->name, (*item)->name_len, &prop_name, &prop_class_name);
+			modifier = xdebug_get_property_info((*item)->name, (*item)->name_len + 1, &prop_name, &prop_class_name);
 #else
 			modifier = xdebug_get_property_info((*item)->name, (*item)->name_len + 1, &prop_name, &prop_class_name);
 #endif
@@ -1945,22 +1956,21 @@ void xdebug_attach_uninitialized_var(xdebug_xml_node *node, char *name)
 	xdebug_xml_add_child(node, contents);
 }
 
+#if PHP_VERSION_ID >= 70000
+void xdebug_attach_property_with_contents(zend_property_info *prop_info, xdebug_xml_node *node, xdebug_var_export_options *options, zend_class_entry *class_entry, char *class_name, int *children_count)
+{
+#else
 void xdebug_attach_property_with_contents(zend_property_info *prop_info TSRMLS_DC, int num_args, va_list args, zend_hash_key *hash_key)
 {
-	xdebug_xml_node    *node;
+	xdebug_xml_node    *node = va_arg(args, xdebug_xml_node *);
+	xdebug_var_export_options *options = va_arg(args, xdebug_var_export_options *);
+	zend_class_entry   *class_entry = va_arg(args, zend_class_entry *);
+	char               *class_name = va_arg(args, char *);
+	int                *children_count = va_arg(args, int *);
+#endif
 	char               *modifier;
 	xdebug_xml_node    *contents = NULL;
-	char               *class_name;
-	zend_class_entry   *class_entry;
 	char               *prop_name, *prop_class_name;
-	xdebug_var_export_options *options;
-	int                *children_count;
-
-	node = va_arg(args, xdebug_xml_node *);
-	options = va_arg(args, xdebug_var_export_options *);
-	class_entry = va_arg(args, zend_class_entry *);
-	class_name = va_arg(args, char *);
-	children_count = va_arg(args, int *);
 
 	if ((prop_info->flags & ZEND_ACC_STATIC) == 0) {
 		return;
@@ -1968,7 +1978,7 @@ void xdebug_attach_property_with_contents(zend_property_info *prop_info TSRMLS_D
 
 	(*children_count)++;
 #if PHP_VERSION_ID >= 70000
-	modifier = xdebug_get_property_info(STR_NAME_VAL(prop_info->name), STR_NAME_LEN(prop_info->name), &prop_name, &prop_class_name);
+	modifier = xdebug_get_property_info(STR_NAME_VAL(prop_info->name), STR_NAME_LEN(prop_info->name) + 1, &prop_name, &prop_class_name);
 #else
 	modifier = xdebug_get_property_info((char *) prop_info->name, prop_info->name_length, &prop_name, &prop_class_name);
 #endif
@@ -2005,14 +2015,24 @@ void xdebug_attach_static_vars(xdebug_xml_node *node, xdebug_var_export_options 
 	HashTable        *static_members = &ce->properties_info;
 	int               children = 0;
 	xdebug_xml_node  *static_container;
+#if PHP_VERSION_ID >= 70000
+	zend_property_info *zpi;
+#endif
 
 	static_container = xdebug_xml_node_init("property");
 	xdebug_xml_add_attribute(static_container, "name", "::");
 	xdebug_xml_add_attribute(static_container, "fullname", "::");
 	xdebug_xml_add_attribute(static_container, "type", "object");
 	xdebug_xml_add_attribute_ex(static_container, "classname", xdstrdup(STR_NAME_VAL(ce->name)), 0, 1);
-
-	zend_hash_apply_with_arguments(static_members TSRMLS_CC, (apply_func_args_t) xdebug_attach_property_with_contents, 5, static_container, options, ce, ce->name, &children); 
+#if PHP_VERSION_ID >= 70000
+	ZEND_HASH_INC_APPLY_COUNT(static_members);
+	ZEND_HASH_FOREACH_PTR(static_members, zpi) {
+		xdebug_attach_property_with_contents(zpi, static_container, options, ce, STR_NAME_VAL(ce->name), &children);
+	} ZEND_HASH_FOREACH_END();
+	ZEND_HASH_DEC_APPLY_COUNT(static_members);
+#else
+	zend_hash_apply_with_arguments(static_members TSRMLS_CC, (apply_func_args_t) xdebug_attach_property_with_contents, 5, static_container, options, ce, ce->name, &children);
+#endif
 	xdebug_xml_add_attribute(static_container, "children", children > 0 ? "1" : "0");
 	xdebug_xml_add_attribute_ex(static_container, "numchildren", xdebug_sprintf("%d", children), 0, 1);
 
@@ -2028,6 +2048,15 @@ void xdebug_var_export_xml_node(zval **struc, char *name, xdebug_xml_node *node,
 	zend_string *key;
 	zval *z_val;
 	xdebug_object_item *xoi_val;
+
+	if (Z_TYPE_P(*struc) == IS_INDIRECT) {
+		zval *tmpz = ((*struc)->value.zv);
+		struc = &tmpz;
+	}
+	if (Z_TYPE_P(*struc) == IS_REFERENCE) {
+		zval *tmpz = &((*struc)->value.ref->val);
+		struc = &tmpz;
+	}
 #endif
 
 	switch (Z_TYPE_P(*struc)) {
