@@ -256,6 +256,7 @@ ZEND_BEGIN_MODULE_GLOBALS(xdebug)
 	zend_bool     profiler_enable_trigger;
 	char         *profiler_enable_trigger_value;
 	zend_bool     profiler_append;
+	zend_bool     profiler_lite;
 
 	/* profiler globals */
 	zend_bool     profiler_enabled;
