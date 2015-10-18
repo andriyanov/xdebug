@@ -142,30 +142,27 @@ void xdebug_profiler_function_user_end_lite(function_stack_entry *fse, zend_op_a
 		fse->prev->aggr_entry->time_own -= fse->profile.time;
 }
 
-static char* get_filename_ref(char *name TSRMLS_DC)
+static char * get_name_hashref(char *name, xdebug_hash *hash, int *p_last TSRMLS_DC)
 {
 	long nr;
 
-	if (xdebug_hash_find(XG(profile_filename_refs), name, strlen(name), (void*) &nr)) {
+	if (xdebug_hash_find(hash, name, strlen(name), (void*) &nr)) {
 		return xdebug_sprintf("(%d)", nr);
 	} else {
-		XG(profile_last_filename_ref)++;
-		xdebug_hash_add(XG(profile_filename_refs), name, strlen(name), (void*) (size_t) XG(profile_last_filename_ref));
-		return xdebug_sprintf("(%d) %s", XG(profile_last_filename_ref), name);
+		(*p_last)++;
+		xdebug_hash_add(hash, name, strlen(name), (void*) (size_t) *p_last);
+		return xdebug_sprintf("(%d) %s", *p_last, name);
 	}
+}
+
+static char* get_filename_ref(char *name TSRMLS_DC)
+{
+	return get_name_hashref(name, XG(profile_filename_refs), &XG(profile_last_filename_ref) TSRMLS_CC);
 }
 
 static char* get_functionname_ref(char *name TSRMLS_DC)
 {
-	long nr;
-
-	if (xdebug_hash_find(XG(profile_functionname_refs), name, strlen(name), (void*) &nr)) {
-		return xdebug_sprintf("(%d)", nr);
-	} else {
-		XG(profile_last_functionname_ref)++;
-		xdebug_hash_add(XG(profile_functionname_refs), name, strlen(name), (void*) (size_t) XG(profile_last_functionname_ref));
-		return xdebug_sprintf("(%d) %s", XG(profile_last_functionname_ref), name);
-	}
+	return get_name_hashref(name, XG(profile_functionname_refs), &XG(profile_last_functionname_ref) TSRMLS_CC);
 }
 
 void xdebug_profiler_function_user_end(function_stack_entry *fse, zend_op_array* op_array TSRMLS_DC)
