@@ -67,6 +67,9 @@ void xdebug_profile_call_entry_dtor(void *dummy, void *elem)
 int xdebug_profiler_init(char *script_name TSRMLS_DC)
 {
 	char *filename = NULL, *fname = NULL;
+
+	if (XG(profiler_lite))
+		return SUCCESS;
 	
 	if (!strlen(XG(profiler_output_name)) ||
 		xdebug_format_output_filename(&fname, XG(profiler_output_name), script_name) <= 0
