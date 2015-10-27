@@ -337,12 +337,13 @@ static int xdebug_print_aggr_entry(void *pDest, void *argument TSRMLS_DC)
 	FILE *fp = p->file;
 	xdebug_aggregate_entry *xae = (xdebug_aggregate_entry *) pDest;
 
-	fprintf(fp, "fl=%s\n", get_name_hashref(xae->filename, p->fl, &p->fl_max TSRMLS_CC));
-	fprintf(fp, "fn=%s\n", get_name_hashref(xae->function, p->fn, &p->fn_max TSRMLS_CC));
-	fprintf(fp, "%d %lu\n", 0, (unsigned long) (xae->time_own * 1000000));
 	if (strcmp(xae->function, "{main}") == 0) {
 		fprintf(fp, "\nsummary: %lu\n\n", (unsigned long) (xae->time_inclusive * 1000000));
 	}
+
+	fprintf(fp, "fl=%s\n", get_name_hashref(xae->filename, p->fl, &p->fl_max TSRMLS_CC));
+	fprintf(fp, "fn=%s\n", get_name_hashref(xae->function, p->fn, &p->fn_max TSRMLS_CC));
+	fprintf(fp, "%d %lu\n", 0, (unsigned long) (xae->time_own * 1000000));
 	if (xae->call_list) {
 		xdebug_aggregate_entry *xae_call;
 #if PHP_VERSION_ID >= 70000
