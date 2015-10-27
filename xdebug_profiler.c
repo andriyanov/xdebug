@@ -49,6 +49,10 @@ void xdebug_profile_aggr_call_entry_dtor(void *elem)
 	if (xae->function) {
 		xdfree(xae->function);
 	}
+	if (xae->call_list) {
+		zend_hash_destroy(xae->call_list);
+		xdfree(xae->call_list);
+	}
 }
 
 void xdebug_profile_call_entry_dtor(void *dummy, void *elem)
