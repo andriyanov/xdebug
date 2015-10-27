@@ -328,14 +328,34 @@ void xdebug_profiler_function_internal_end(function_stack_entry *fse TSRMLS_DC)
 }
 
 #if PHP_VERSION_ID >= 70000
-static int xdebug_print_aggr_entry(zval *pDest, void *argument TSRMLS_DC)
+static int xdebug_sum_aggr_entry(zval *pDest, void *hash TSRMLS_DC)
 #else
-static int xdebug_print_aggr_entry(void *pDest, void *argument TSRMLS_DC)
+static int xdebug_sum_aggr_entry(void *pDest, void *hash TSRMLS_DC)
 #endif
 {
-	struct aggr_call_params *p = argument;
-	FILE *fp = p->file;
 	xdebug_aggregate_entry *xae = (xdebug_aggregate_entry *) pDest;
+	xdebug_aggregate_entry *sum_xae = NULL;
+	char *seen_key = xdebug_sprintf("%s.%s", xae->filename, xae->function);
+	int seen_key_len = strlen(seen_key);
+
+	if (xdebug_hash_find((xdebug_hash*) hash, seen_key, seen_key_len, (void**) &sum_xae)) {
+		sum_xae->time_own += xae->time_own;
+		sum_xae->call_count += xae->call_count;
+	} else {
+		sum_xae = xdmalloc(sizeof(xdebug_aggregate_entry));
+		memcpy(sum_xae, xae, sizeof(xdebug_aggregate_entry));
+		xdebug_hash_add((xdebug_hash*) hash, seen_key, seen_key_len, (void*) sum_xae);
+	}
+
+	xdfree(seen_key);
+	return ZEND_HASH_APPLY_KEEP;
+}
+
+static void xdebug_print_aggr_entry(void *user, xdebug_hash_element *he, void *argument)
+{
+	struct aggr_call_params *p = user;
+	FILE *fp = p->file;
+	xdebug_aggregate_entry *xae = (xdebug_aggregate_entry *) he->ptr;
 
 	if (strcmp(xae->function, "{main}") == 0) {
 		fprintf(fp, "\nsummary: %lu\n\n", (unsigned long) (xae->time_inclusive * 1000000));
@@ -367,8 +387,6 @@ static int xdebug_print_aggr_entry(void *pDest, void *argument TSRMLS_DC)
 	}
 	fprintf(fp, "\n");
 	fflush(fp);
-
-	return ZEND_HASH_APPLY_KEEP;
 }
 
 int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
@@ -394,13 +412,21 @@ int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
 	fprintf(aggr_file, "version: 0.9.6\ncmd: Aggregate\npart: 1\n\nevents: Time\n\n");
 	fflush(aggr_file);
 
+	xdebug_hash *sum_hash = xdebug_hash_alloc(128, xdfree);
 	struct aggr_call_params *params = malloc(sizeof(struct aggr_call_params));
 	params->file = aggr_file;
-	params->fl = xdebug_hash_alloc(128, NULL);
-	params->fn = xdebug_hash_alloc(128, NULL);
+	params->fl = xdebug_hash_alloc(128, xdfree);
+	params->fn = xdebug_hash_alloc(128, xdfree);
 	params->fl_max = 0;
 	params->fn_max = 0;
-	zend_hash_apply_with_argument(&XG(aggr_calls), xdebug_print_aggr_entry, params TSRMLS_CC);
+
+	zend_hash_apply_with_argument(&XG(aggr_calls), xdebug_sum_aggr_entry, sum_hash TSRMLS_CC);
+	xdebug_hash_apply_with_argument(sum_hash, params, xdebug_print_aggr_entry, NULL);
+
+	xdebug_hash_destroy(sum_hash);
+	sum_hash = NULL;
+	xdebug_hash_destroy(params->fl);
+	xdebug_hash_destroy(params->fn);
 	free(params);
 	params = NULL;
 
