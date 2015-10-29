@@ -68,18 +68,15 @@ void xdebug_profile_call_entry_dtor(void *dummy, void *elem)
 	xdfree(ce);
 }
 
-int xdebug_profiler_init(char *script_name TSRMLS_DC)
+static char * xdebug_profiler_get_filename(char *script_name TSRMLS_DC)
 {
 	char *filename = NULL, *fname = NULL;
 
-	if (XG(profiler_lite))
-		return SUCCESS;
-	
 	if (!strlen(XG(profiler_output_name)) ||
 		xdebug_format_output_filename(&fname, XG(profiler_output_name), script_name) <= 0
 	) {
 		/* Invalid or empty xdebug.profiler_output_name */
-		return FAILURE;
+		return NULL;
 	}
 	if (IS_SLASH(XG(profiler_output_dir)[strlen(XG(profiler_output_dir)) - 1])) {
 		filename = xdebug_sprintf("%s%s", XG(profiler_output_dir), fname);
@@ -87,7 +84,19 @@ int xdebug_profiler_init(char *script_name TSRMLS_DC)
 		filename = xdebug_sprintf("%s%c%s", XG(profiler_output_dir), DEFAULT_SLASH, fname);
 	}
 	xdfree(fname);
-		
+	return filename;
+}
+
+int xdebug_profiler_init(char *script_name TSRMLS_DC)
+{
+	char *filename = NULL;
+
+	if (XG(profiler_lite))
+		return SUCCESS;
+
+	filename = xdebug_profiler_get_filename(script_name TSRMLS_CC);
+	if (! filename)
+		return FAILURE;
 	if (XG(profiler_append)) {
 		XG(profile_file) = xdebug_fopen(filename, "a", NULL, &XG(profile_filename));
 	} else {
@@ -391,17 +400,22 @@ static void xdebug_print_aggr_entry(void *user, xdebug_hash_element *he, void *a
 
 int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
 {
-	char *filename;
+	char *filename = NULL;
 	FILE *aggr_file;
 
 	// fprintf(stderr, "in xdebug_profiler_output_aggr_data() with %d entries\n", zend_hash_num_elements(&XG(aggr_calls)));
 
 	if (zend_hash_num_elements(&XG(aggr_calls)) == 0) return SUCCESS;
 
-	if (prefix) {
-		filename = xdebug_sprintf("%s/cachegrind.out.aggregate.%s.%ld", XG(profiler_output_dir), prefix, getpid());
-	} else {
-		filename = xdebug_sprintf("%s/cachegrind.out.aggregate.%ld", XG(profiler_output_dir), getpid());
+	if (XG(profiler_lite)) {
+		filename = xdebug_profiler_get_filename("" TSRMLS_CC);
+	}
+	if (! filename) {
+		if (prefix) {
+			filename = xdebug_sprintf("%s/cachegrind.out.aggregate.%s.%ld", XG(profiler_output_dir), prefix, getpid());
+		} else {
+			filename = xdebug_sprintf("%s/cachegrind.out.aggregate.%ld", XG(profiler_output_dir), getpid());
+		}
 	}
 
 	// fprintf(stderr, "opening %s\n", filename);
