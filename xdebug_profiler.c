@@ -429,8 +429,8 @@ int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
 	xdebug_hash *sum_hash = xdebug_hash_alloc(128, xdfree);
 	struct aggr_call_params *params = malloc(sizeof(struct aggr_call_params));
 	params->file = aggr_file;
-	params->fl = xdebug_hash_alloc(128, xdfree);
-	params->fn = xdebug_hash_alloc(128, xdfree);
+	params->fl = xdebug_hash_alloc(128, NULL);
+	params->fn = xdebug_hash_alloc(128, NULL);
 	params->fl_max = 0;
 	params->fn_max = 0;
 
