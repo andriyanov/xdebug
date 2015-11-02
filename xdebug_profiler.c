@@ -407,7 +407,7 @@ int xdebug_profiler_output_aggr_data(const char *prefix TSRMLS_DC)
 
 	if (zend_hash_num_elements(&XG(aggr_calls)) == 0) return SUCCESS;
 
-	if (XG(profiler_lite)) {
+	if (0 && XG(profiler_lite)) {
 		filename = xdebug_profiler_get_filename("" TSRMLS_CC);
 	}
 	if (! filename) {
